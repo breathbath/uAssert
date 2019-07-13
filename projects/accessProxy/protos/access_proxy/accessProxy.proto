@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.helloworld";
+option java_outer_classname = "HelloWorldProto";
+
+package access_proxy;
+
+import "voltha_protos/device.proto";
+
+service Devices {
+    rpc GetDeviceBySn (SerialNumber) returns (voltha.Device) {}
+}
+
+// The request message containing the serial number
+message SerialNumber {
+    string sn = 1;
+}

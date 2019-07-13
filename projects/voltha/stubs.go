@@ -15,7 +15,7 @@ func GetStubs() simulation.GrpcCases {
 			Response: &voltha.Devices{
 				Items:[]*voltha.Device{
 					{
-						Id: "Some dev",
+						Id: "id1",
 						Type: "Olt",
 						Root: true,
 						ParentId: "",
@@ -25,6 +25,7 @@ func GetStubs() simulation.GrpcCases {
 						HardwareVersion: "333",
 						FirmwareVersion: "333",
 						Address: &voltha.Device_Ipv4Address{"11:111:111:11"},
+						SerialNumber: "sn2",
 					},
 				},
 			},
