@@ -162,6 +162,9 @@ The microservices set consists of 2 items:
 - access proxy (layer to control access to voltha and abstract it even more by simplifying some interfaces)
 
 We want to write functional tests against the access proxy. For that we want to simulate Voltha behaviour, since it's quite complex and requires hardware devices in the system.
+
+![alt text](https://breathbath.com/files/dUFzc2VydEV4YW1wbGVVc2FnZS5wbmc=_bklmpqt7f7pistjue2fg.png)
+
 Our test case we define as following:
 
 Voltha cannot provide a Device information by it's serial number as it supports only [GetDevice by id method](https://github.com/opencord/voltha-protos/blob/master/protos/voltha_protos/voltha.proto#L337)
