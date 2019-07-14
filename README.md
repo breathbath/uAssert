@@ -163,7 +163,7 @@ The microservices set consists of 2 items:
 
 We want to write functional tests against the access proxy. For that we want to simulate Voltha behaviour, since it's quite complex and requires hardware devices in the system.
 
-![alt text](https://breathbath.com/files/dUFzc2VydEV4YW1wbGVVc2FnZS5wbmc=_bklmpqt7f7pistjue2fg.png)
+![alt text](https://breathbath.com/files/dUFzc2VydEV4YW1wbGVVc2FnZS5wbmc=_bklmt957f7pistjue2gg.png)
 
 Our test case we define as following:
 
