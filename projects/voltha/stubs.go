@@ -6,10 +6,8 @@ import (
 	"github.com/opencord/voltha-protos/go/voltha"
 )
 
-const GRPC_ADDRESS = "localhost:5501"
-
-func GetStubs() simulation.GrpcCases {
-	return simulation.GrpcCases{
+func GetStubs() simulation.SimulationCases {
+	return simulation.SimulationCases{
 		{
 			Request:  &empty.Empty{},
 			Response: &voltha.Devices{

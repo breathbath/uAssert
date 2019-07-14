@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 )
 
-func Md5(request interface{}, salt string) string {
-	serialisedRequest := StringifyGraceful(request, false)
+func Md5(payload interface{}, salt string) string {
+	serialisedRequest := StringifyGraceful(payload, false)
 	serialisedCase :=  salt + "." + serialisedRequest
 
 	hasher := md5.New()

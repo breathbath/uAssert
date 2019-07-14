@@ -1,10 +1,10 @@
 package simulation
 
-type GrpcCases []GrpcCase
+type SimulationCases []SimulationCase
 
-type GrpcCasesMap map[string]GrpcCase
+type SimulationCasesMap map[string]SimulationCase
 
-type GrpcCase struct {
+type SimulationCase struct {
 	Request  interface{}
 	Response interface{}
 	Namespace  string

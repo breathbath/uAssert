@@ -11,19 +11,19 @@ const DEFAULT_ADDRESS = ":55501"
 
 type GrpcServer struct {
 	grpcServer  *grpc.Server
-	registrator func(*grpc.Server)
+	registrators []func(*grpc.Server)
 	address     string
 }
 
-func NewGrpcServer(registrator func(*grpc.Server), address string) *GrpcServer {
+func NewGrpcServer(address string, registrators ...func(*grpc.Server)) *GrpcServer {
 	return &GrpcServer{
 		grpcServer:  grpc.NewServer(),
-		registrator: registrator,
+		registrators: registrators,
 		address:     address,
 	}
 }
 
-func (vs *GrpcServer) StartAsync() error {
+func (vs *GrpcServer) StartAsync(startupTimeout time.Duration) error {
 	errChan := make(chan error)
 	go func() {
 		err := vs.StartSync()
@@ -35,7 +35,7 @@ func (vs *GrpcServer) StartAsync() error {
 	select {
 	case err := <-errChan:
 		return err
-	case <-time.After(time.Second):
+	case <-time.After(startupTimeout):
 		return nil
 	}
 }
@@ -68,6 +68,9 @@ func (vs *GrpcServer) prepare() (error, net.Listener) {
 		return err, lis
 	}
 	fmt.Println("Starting grpc server")
-	vs.registrator(vs.grpcServer)
+
+	for _, reg := range vs.registrators {
+		reg(vs.grpcServer)
+	}
 	return nil, lis
 }

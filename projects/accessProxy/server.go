@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"context"
@@ -10,10 +10,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"time"
-)
-
-const (
-	ACCESS_PROXY_ADDRESS = "locahost:52051"
 )
 
 type ApDevicesServer struct{
@@ -46,11 +42,11 @@ func (as ApDevicesServer) GetDeviceBySn(ctx context.Context, sn *access_proxy.Se
 	return nil, status.Errorf(codes.NotFound, "%s", sn.Sn)
 }
 
-func GetAccessProxyServer() *simulation.GrpcServer {
+func NewAccessProxyServer(accessProxyAddress, volthaAddress string) *simulation.GrpcServer {
 	return simulation.NewGrpcServer(
+		accessProxyAddress,
 		func(server *grpc.Server) {
-			access_proxy.RegisterDevicesServer(server, &ApDevicesServer{})
+			access_proxy.RegisterDevicesServer(server, &ApDevicesServer{volthaAddress: volthaAddress})
 		},
-		ACCESS_PROXY_ADDRESS,
 	)
 }

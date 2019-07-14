@@ -1,0 +1,17 @@
+language: go
+
+go:
+  - 1.12.x
+  - tip
+
+# Only clone the most recent commit.
+git:
+  depth: 1
+
+script:
+ - go list ./... | grep -v projects | xargs go vet
+ - go list ./... | grep -v projects | xargs go test -race
+
+notifications:
+  email:
+    - posandrey@gmail.com
