@@ -97,6 +97,15 @@ func TestMissingState(t *testing.T) {
 	assert.Nil(t, actualState)
 }
 
+func TestRemovingState(t *testing.T) {
+	r := NewRuntime()
+	r.SetState("someKey", "someVal")
+	r.RemoveState("someKey")
+	actualState, found := r.GetState("someKey")
+	assert.False(t, found)
+	assert.Nil(t, actualState)
+}
+
 func TestMissingStateFailure(t *testing.T) {
 	r := NewRuntime()
 	r.Run(t)

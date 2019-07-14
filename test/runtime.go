@@ -36,6 +36,10 @@ func (r *Runtime) GetState(key string) (interface{}, bool) {
 	return s, ok
 }
 
+func (r *Runtime) RemoveState(key string) {
+	delete(r.state, key)
+}
+
 func (r *Runtime) GetStateOrFail(key string) interface{} {
 	s, ok := r.GetState(key)
 	if !ok {

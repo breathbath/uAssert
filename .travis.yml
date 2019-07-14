@@ -4,6 +4,12 @@ go:
   - 1.12.x
   - tip
 
+env:
+  - GO111MODULE=on
+
+before_install:
+  - go mod download
+
 # Only clone the most recent commit.
 git:
   depth: 1
