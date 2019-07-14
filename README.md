@@ -252,17 +252,17 @@ Please note that the both services are started async (which is not natively supp
 - after all tests we want to make sure that both services are down and not blocking any network resources:
 
     
-    func init() {
-    	testsRuntime = tests.NewRuntime()
-    	...
-    	testsRuntime.AfterAll(cleanup)
-    	...
-    }
-    ...
-    func cleanup(r *tests.Runtime) {
-    	r.GetStateOrFail("voltha_server").(*simulation.GrpcServer).Stop()
-    	r.GetStateOrFail("access_proxy_server").(*simulation.GrpcServer).Stop()
-    }
+        func init() {
+            testsRuntime = tests.NewRuntime()
+            ...
+            testsRuntime.AfterAll(cleanup)
+            ...
+        }
+        ...
+        func cleanup(r *tests.Runtime) {
+            r.GetStateOrFail("voltha_server").(*simulation.GrpcServer).Stop()
+            r.GetStateOrFail("access_proxy_server").(*simulation.GrpcServer).Stop()
+        }
     
 Please note, that disregard the async mode, the server stopping will be blocking until the servers are down.
 
