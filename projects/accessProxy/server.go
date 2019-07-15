@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"log"
 	"time"
 )
 
@@ -22,7 +23,14 @@ func (as ApDevicesServer) GetDeviceBySn(ctx context.Context, sn *access_proxy.Se
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
+
+	defer func(){
+		err = conn.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+
 	volthaClient := voltha.NewVolthaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
