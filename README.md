@@ -19,94 +19,80 @@ The project uAssert is intended to solve following problems:
 - Consistent assertion scenarios agnostic to the source of events (logs, queues, api calls, persistent states)
 - Possibility to run complex testing scenarios with easily manageable state and life-cycle management (LCM) of the involved services
 
-## Current status of uAssert library
+### Recommendations for a stateful functional testing
 
-Currently the library provides following tools:
+`go test` is a perfect tool for unit tests, for functional testing we can use sub tests for stateful execution and LCM.
 
-### Stateful testing runtime
-
-`go test` is a perfect tool for creating unit tests but it lacks life-cycle management and state control for more advanced functional tests.
-
-Stateful testing runtime allows you to execute a group of related tests in a shared state. Consider a situation where you want to test bunch of cases for the same micro-services subset. You can destroy and recover the whole setup for each test case, but it takes much time. You also probably would like to play subsequent testing scenarios where the state changes by each test and then evaluate the final result. 
+Subtests allow you to execute a group of related tests with a shared state. Consider a situation where you want to test bunch of cases for the same micro-services subset. You can destroy and recover the whole setup for each test case, but it takes much time. You also probably would like to play subsequent testing scenarios where the state changes by each test and then evaluate the final result. 
 Imagine a proxy service which controls access to some device manager service. 
 
 Your test cases might be like this:
 
 - assert proxy is healthy when device management is healthy and not-healthy if one of them fails
 - assert that api responses of device management are forwarded by proxy unmodified
-- assert that proxy doesn't allow unauthorised access to device management
+- assert that proxy doesn't allow unauthorised access to device management (DM)
 
-For all the tests you want to make sure:
+For all the assertions you want to make sure:
 - that the proxy and DM services are up and running before testing, tests should not be executed if both services are not ready yet to accept connections
 - tests should not start at all if there are startup problems, the whole test suit should fail early in this case
 - before each test we want to reset the list of devices, any modifications made to this data should not be visible in following tests
 - after each test we want to reset any saved data
-- if all tests are finished, we want all micro-services to be down to make sure they are not blocking network ports/IPs for further test suits
+- if all tests are finished, we want all micro-services to be down to make sure they are not blocking network ports/IPs for further tests
 
-With a standard go test functionality it's quite cumbersome to implement this testing logic. As it's quite repeating, we decided to implement the Stateful Testing Runtime, so the requirements above can be fulfilled in the following test:
+Let's use sub tests to accomplish those LCM requirements:
     
-        var testsRuntime *tests.Runtime
+        var proxyServer *Proxy
+        var deviceManager *DeviceManager
         
-        func init() {
-        	testsRuntime = tests.NewRuntime()
+        func setup() {
+        	proxyServer = NewProxy("localhost:2233")
         
-        	testsRuntime.BeforeAll(func(r *tests.Runtime){
-        		proxyServer := NewProxy("localhost:2233")
+            err := proxyServer.Start()
+            if err == nil {
+                panic(err) //no tests will be executed further
+            }
         
-        		err := proxyServer.Start()
-        		if err == nil {
-        			panic(err) //no tests will be executed further
-        		}
-        
-        		deviceManager := NewDeviceManager("localhost:2233")
-        
-        		pong := deviceManager.Ping() //just to demonstrate a different health check
-        		if pong == nil {
-        			proxyServer.Stop() //we want a proper cleanup if the other server is not ready
-        			panic(errors.New("Cannot bring up device manager")) //no tests will be executed further
-        		}
-        
-        		r.SetState("proxy", proxyServer) //we want both services be available for LCM
-        		r.SetState("deviceManager", proxyServer)
-        	})
-        
-        	testsRuntime.BeforeEach(func(r *tests.Runtime) {
-        		dm := r.GetStateOrFail("deviceManager").(*DeviceManager) //retrieve device manager
-        		dm.SetDevices([]string{"deviceA", "deviceB"}) //we want to make sure that before any test the device manager has the same state
-        	})
-        
-        	testsRuntime.AfterEach(func(r *tests.Runtime) {
-        		dm := r.GetStateOrFail("deviceManager").(*DeviceManager) //retrieve device manager
-        		dm.SetDevicesStates([]string{}) //whatever tests modified in device states we reset it
-        	})
-        
-        	testsRuntime.AfterAll(func(r *tests.Runtime) { //doing cleanup only after all tests are done
-        		p := r.GetStateOrFail("proxy").(*Proxy)
-        		p.Stop()
-        
-        		dm := r.GetStateOrFail("deviceManager").(*DeviceManager)
-        		dm.Stop()
-        	})
-        
-        	testsRuntime.TestCase(assertProxyHealth) //our test cases
-        	testsRuntime.TestCase(assertProxyForwardingResponsesUnmodified)
-        	testsRuntime.TestCase(assertProxyRightsControl)
+        	deviceManager = NewDeviceManager("localhost:2233")
+        	pong := deviceManager.Ping() //just to demonstrate a different health check
+            if pong == nil {
+                proxyServer.Stop() //we want a proper cleanup if the other server is not ready
+                panic(errors.New("Cannot bring up device manager")) //no tests will be executed further
+            }
         }
         
-        func TestProxy(t *testing.T) {
-        	testsRuntime.Run(t) //the preconfigured LCM as well as tests execution is performed here
+        func cleanup() {
+            proxyServer.Stop()
+            deviceManager.Stop() 
         }
         
-        func assertProxyHealth(t *testing.T, r *tests.Runtime) {
-        	//... test1
+        func TestProxy(t *testing.T) { //main test to execute subtests
+        	setup()
+        	defer cleanup()
+        	
+        	deviceManager.SetDevices([]string{"deviceA", "deviceB"}) //we want to make sure that before any test the device manager has the same state
+        	t.Run("assertProxyHealth", testProxyHealth)
+        	deviceManager.SetDevicesStates([]string{}) //whatever tests modified in device states we reset it
+        	
+        	deviceManager.SetDevices([]string{"deviceA", "deviceB"})
+        	t.Run("assertProxyForwardingResponsesUnmodified", testProxyForwardingResponsesUnmodified)
+        	deviceManager.SetDevicesStates([]string{})
+        	
+            deviceManager.SetDevices([]string{"deviceA", "deviceB"})
+            t.Run("assertProxyRightsControl", testProxyRightsControl)
+            deviceManager.SetDevicesStates([]string{})
+        }
+       
+        
+        func testProxyHealth(t *testing.T, r *tests.Runtime) {
+        	//... sub test1
         }
         
-        func assertProxyForwardingResponsesUnmodified(t *testing.T, r *tests.Runtime) {
-        	//... test2
+        func testProxyForwardingResponsesUnmodified(t *testing.T, r *tests.Runtime) {
+        	//... sub test2
         }
         
-        func assertProxyRightsControl(t *testing.T, r *tests.Runtime) {
-        	//... test3
+        func testProxyRightsControl(t *testing.T, r *tests.Runtime) {
+        	//... sub test3
         }
 
 The chain of events for this test will look like this:
@@ -123,6 +109,10 @@ The chain of events for this test will look like this:
 - Executing tests for forbidding unauthorized access to device manager
 - Resetting devices states storage so it's empty for the next test
 - Stopping device manager and proxy
+
+## Current status of uAssert library
+
+Currently the library provides following tools:
 
 ### GRPC simulator
 
@@ -161,7 +151,7 @@ For the simplification we will work with 2 micro-services:
 - Device manager simulator (DMS)
 - Proxy to control access to DMS and extend its APIs
 
-We want to write functional tests against the proxy which will call device manager simulator. The later one will return predefined responses. We will use GRPC simulator and Stateful Testing Runtime from our library.
+We want to write functional tests against the proxy which will call device manager simulator. The later one will return predefined responses. We will use GRPC simulator from our library.
 
 ![alt text](https://breathbath.com/files/dUFzc2VydEV4YW1wbGVVc2FnZS5wbmc=_bklmt957f7pistjue2gg.png)
 
@@ -211,60 +201,64 @@ The GetDeviceBySn method is expected to return a device from the result of ListD
 We used [uAssert testing Runtime](https://github.com/breathbath/uAssert/blob/master/test/runtime.go) for LCM:
 
 - before any tests we want to make sure that the DMS service and proxy are up:
-
-    	func init() {
-        	testsRuntime = tests.NewRuntime()
-        	testsRuntime.BeforeAll(setup)
-        	...
-        }
-    	
-    	...
-    	
-    	func setup(r *tests.Runtime) {
-        	volthaServerSimulator := voltha2.NewVolthaServerSimulator(VOLTHA_SERVER)
-        	err := volthaServerSimulator.StartAsync(time.Microsecond * 500)
-        	if err != nil {
-        		log.Panic(err)
-        	}
-        	r.SetState("voltha_server", volthaServerSimulator)
         
-        	accessProxyServer := NewAccessProxyServer(ACCESS_PROXY_SERVER, VOLTHA_SERVER)
-        	err = accessProxyServer.StartAsync(time.Microsecond * 500)
-        	if err != nil {
-        		log.Panic(err)
-        	}
-        	r.SetState("access_proxy_server", accessProxyServer)
+        
+        var (
+        	volthaServerSimulator *simulation.GrpcServer
+        	accessProxyServer *simulation.GrpcServer
+        	accessProxyDevicesClient access_proxy.DevicesClient
+        )
+        
+        func setup() {
+            volthaServerSimulator = voltha2.NewVolthaServerSimulator(VOLTHA_SERVER)
+            err := volthaServerSimulator.StartAsync(time.Microsecond * 500)
+            if err != nil {
+                log.Panic(err)
+            }
+        
+            accessProxyServer = NewAccessProxyServer(ACCESS_PROXY_SERVER, VOLTHA_SERVER)
+            err = accessProxyServer.StartAsync(time.Microsecond * 500)
+            if err != nil {
+                log.Panic(err)
+            }
+        
+            grpcConn, err := grpc.Dial(ACCESS_PROXY_SERVER, grpc.WithInsecure())
+            if err != nil {
+                log.Panic(err)
+            }
+            accessProxyDevicesClient = access_proxy.NewDevicesClient(grpcConn)
         }
 
 Please note that the both services are started async so they are not blocking the main test process.        
 
 - we run our test(s)
 
-        func init() {
-        	testsRuntime = tests.NewRuntime()
-        	testsRuntime.TestCase(testDeviceIdSnMapping)
-        	...
-        }
-        
-        func testDeviceIdSnMapping(t *testing.T, r *tests.Runtime) {
-            ...
-        	assert.NoError(t, err)
-        	...
+
+        func testNoDeviceBySnIsFound(t *testing.T) {
+        	device, err := accessProxyDevicesClient.GetDeviceBySn(
+        		context.Background(),
+        		&access_proxy.SerialNumber{Sn: "some_unknown_sn"},
+        		grpc.WaitForReady(true),
+        	)
+        	assert.EqualError(t, err, "rpc error: code = NotFound desc = some_unknown_sn")
+        	assert.Nil(t, device)
         }
         
 - after all tests we want to make sure that both services are down and not blocking any network resources:
 
     
-        func init() {
-            testsRuntime = tests.NewRuntime()
-            ...
-            testsRuntime.AfterAll(cleanup)
-            ...
+        func cleanup() {
+            volthaServerSimulator.Stop()
+            accessProxyServer.Stop()
         }
-        ...
-        func cleanup(r *tests.Runtime) {
-            r.GetStateOrFail("voltha_server").(*simulation.GrpcServer).Stop()
-            r.GetStateOrFail("access_proxy_server").(*simulation.GrpcServer).Stop()
+        
+- our main test function is:
+
+
+        func TestAccessProxy(t *testing.T) {
+        	setup()
+        	defer cleanup()
+        	t.Run("testNoDeviceBySnIsFound", testNoDeviceBySnIsFound)
         }
     
 Please note, that disregard the async mode, the server stopping will be blocking until the servers are down.
