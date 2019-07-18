@@ -5,7 +5,6 @@ import (
 	"github.com/breathbath/uAssert/projects/accessProxy/protos/access_proxy"
 	voltha2 "github.com/breathbath/uAssert/projects/voltha"
 	"github.com/breathbath/uAssert/simulation"
-	tests "github.com/breathbath/uAssert/test"
 	"github.com/opencord/voltha-protos/go/voltha"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -19,41 +18,39 @@ const (
 	ACCESS_PROXY_SERVER = "localhost:23457"
 )
 
-var testsRuntime *tests.Runtime
+var (
+	volthaServerSimulator *simulation.GrpcServer
+	accessProxyServer *simulation.GrpcServer
+	accessProxyDevicesClient access_proxy.DevicesClient
+)
 
-func init() {
-	testsRuntime = tests.NewRuntime()
-	testsRuntime.BeforeAll(setup)
-	testsRuntime.AfterAll(cleanup)
-	testsRuntime.TestCase(testDeviceIdSnMapping)
-}
 
-func setup(r *tests.Runtime) {
-	volthaServerSimulator := voltha2.NewVolthaServerSimulator(VOLTHA_SERVER)
+func setup() {
+	volthaServerSimulator = voltha2.NewVolthaServerSimulator(VOLTHA_SERVER)
 	err := volthaServerSimulator.StartAsync(time.Microsecond * 500)
 	if err != nil {
 		log.Panic(err)
 	}
-	r.SetState("voltha_server", volthaServerSimulator)
 
-	accessProxyServer := NewAccessProxyServer(ACCESS_PROXY_SERVER, VOLTHA_SERVER)
+	accessProxyServer = NewAccessProxyServer(ACCESS_PROXY_SERVER, VOLTHA_SERVER)
 	err = accessProxyServer.StartAsync(time.Microsecond * 500)
 	if err != nil {
 		log.Panic(err)
 	}
-	r.SetState("access_proxy_server", accessProxyServer)
-}
 
-func cleanup(r *tests.Runtime) {
-	r.GetStateOrFail("voltha_server").(*simulation.GrpcServer).Stop()
-	r.GetStateOrFail("access_proxy_server").(*simulation.GrpcServer).Stop()
-}
-
-func testDeviceIdSnMapping(t *testing.T, r *tests.Runtime) {
 	grpcConn, err := grpc.Dial(ACCESS_PROXY_SERVER, grpc.WithInsecure())
-	assert.NoError(t, err)
+	if err != nil {
+		log.Panic(err)
+	}
+	accessProxyDevicesClient = access_proxy.NewDevicesClient(grpcConn)
+}
 
-	accessProxyDevicesClient := access_proxy.NewDevicesClient(grpcConn)
+func cleanup() {
+	volthaServerSimulator.Stop()
+	accessProxyServer.Stop()
+}
+
+func testDeviceIdSnMapping(t *testing.T) {
 	device, err := accessProxyDevicesClient.GetDeviceBySn(
 		context.Background(),
 		&access_proxy.SerialNumber{Sn: "sn2"},
@@ -78,6 +75,19 @@ func testDeviceIdSnMapping(t *testing.T, r *tests.Runtime) {
 	}
 }
 
+func testNoDeviceBySnIsFound(t *testing.T) {
+	device, err := accessProxyDevicesClient.GetDeviceBySn(
+		context.Background(),
+		&access_proxy.SerialNumber{Sn: "some_unknown_sn"},
+		grpc.WaitForReady(true),
+	)
+	assert.EqualError(t, err, "rpc error: code = NotFound desc = some_unknown_sn")
+	assert.Nil(t, device)
+}
+
 func TestAccessProxy(t *testing.T) {
-	testsRuntime.Run(t)
+	setup()
+	defer cleanup()
+	t.Run("testDeviceIdSnMapping", testDeviceIdSnMapping)
+	t.Run("testNoDeviceBySnIsFound", testNoDeviceBySnIsFound)
 }

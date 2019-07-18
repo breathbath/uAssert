@@ -21,7 +21,7 @@ endif
 ifneq ("libprotoc 3.7.1", "$(shell protoc --version)")
 	@echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 	@echo "You have the wrong version of protoc installed"
-	@echo "Please install version 3.7.0"
+	@echo "Please install version 3.7.1"
 	@echo "See https://github.com/golang/protobuf"
 	@echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 	exit 1
