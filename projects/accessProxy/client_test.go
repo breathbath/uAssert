@@ -19,11 +19,10 @@ const (
 )
 
 var (
-	volthaServerSimulator *simulation.GrpcServer
-	accessProxyServer *simulation.GrpcServer
+	volthaServerSimulator    *simulation.GrpcServer
+	accessProxyServer        *simulation.GrpcServer
 	accessProxyDevicesClient access_proxy.DevicesClient
 )
-
 
 func setup() {
 	volthaServerSimulator = voltha2.NewVolthaServerSimulator(VOLTHA_SERVER)
@@ -32,7 +31,7 @@ func setup() {
 		log.Panic(err)
 	}
 
-	accessProxyServer = NewAccessProxyServer(ACCESS_PROXY_SERVER, VOLTHA_SERVER)
+	accessProxyServer = NewAccessProxyGrpcServer(ACCESS_PROXY_SERVER, VOLTHA_SERVER)
 	err = accessProxyServer.StartAsync(time.Microsecond * 500)
 	if err != nil {
 		log.Panic(err)
@@ -68,7 +67,7 @@ func testDeviceIdSnMapping(t *testing.T) {
 			Model:           "xyw",
 			HardwareVersion: "333",
 			FirmwareVersion: "333",
-			Address:         &voltha.Device_Ipv4Address{"11:111:111:11"},
+			Address:         &voltha.Device_Ipv4Address{Ipv4Address: "11:111:111:11"},
 			SerialNumber:    "sn2",
 		}
 		assert.Equal(t, expectedDevice, device)
@@ -85,7 +84,11 @@ func testNoDeviceBySnIsFound(t *testing.T) {
 	assert.Nil(t, device)
 }
 
-func TestAccessProxy(t *testing.T) {
+func TestGrpcAccessProxy(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
 	setup()
 	defer cleanup()
 	t.Run("testDeviceIdSnMapping", testDeviceIdSnMapping)

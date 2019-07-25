@@ -50,7 +50,7 @@ func (as ApDevicesServer) GetDeviceBySn(ctx context.Context, sn *access_proxy.Se
 	return nil, status.Errorf(codes.NotFound, "%s", sn.Sn)
 }
 
-func NewAccessProxyServer(accessProxyAddress, volthaAddress string) *simulation.GrpcServer {
+func NewAccessProxyGrpcServer(accessProxyAddress, volthaAddress string) *simulation.GrpcServer {
 	return simulation.NewGrpcServer(
 		accessProxyAddress,
 		func(server *grpc.Server) {
