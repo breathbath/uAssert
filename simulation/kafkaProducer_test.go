@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"context"
 	"github.com/breathbath/go_utils/utils/env"
 	"github.com/breathbath/uAssert/options"
 	"github.com/stretchr/testify/assert"
@@ -13,19 +14,26 @@ func TestKafkaIsAvailableForProducer(t *testing.T) {
 	}
 
 	topic := "test_producer"
-	producer := NewKafkaProducer()
+	connector := NewKafkaConnector()
+	producer := NewKafkaProducer(connector)
 	pubOptions := options.Options{
 		"topic":               topic,
 		"conn":                env.ReadEnvOrFail("KAFKA_CONN_STR"),
 		"write_dead_line_sec": 10,
+		"max_attempts": 3,
 	}
 
-	err := producer.Publish("some payload", pubOptions)
+	err := producer.Publish("some payload", pubOptions, context.Background())
 	assert.NoError(t, err)
 
-	err = producer.CleanTopics("test_producer")
+	err = cleanTopics(pubOptions, connector)
 	assert.NoError(t, err)
 
-	err = producer.Destroy()
+	err = connector.Destroy()
 	assert.NoError(t, err)
+}
+
+func cleanTopics(connOpts options.Options, connector *KafkaConnector) error {
+	cl := NewKafkaCleaner(connector)
+	return cl.CleanTopics(connOpts, context.Background(), "test_producer")
 }
