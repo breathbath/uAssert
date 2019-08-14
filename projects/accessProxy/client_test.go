@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	grpc2 "github.com/breathbath/uAssert/grpc"
 	"github.com/breathbath/uAssert/projects/accessProxy/protos/access_proxy"
 	voltha2 "github.com/breathbath/uAssert/projects/voltha"
-	"github.com/breathbath/uAssert/simulation"
 	"github.com/opencord/voltha-protos/go/voltha"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -19,8 +19,8 @@ const (
 )
 
 var (
-	volthaServerSimulator    *simulation.GrpcServer
-	accessProxyServer        *simulation.GrpcServer
+	volthaServerSimulator    *grpc2.GrpcServer
+	accessProxyServer        *grpc2.GrpcServer
 	accessProxyDevicesClient access_proxy.DevicesClient
 )
 
@@ -84,7 +84,7 @@ func testNoDeviceBySnIsFound(t *testing.T) {
 	assert.Nil(t, device)
 }
 
-func TestGrpcAccessProxy(t *testing.T) {
+func TestGrpcProxy(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}

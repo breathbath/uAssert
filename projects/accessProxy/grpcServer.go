@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	grpc2 "github.com/breathbath/uAssert/grpc"
 	"github.com/breathbath/uAssert/projects/accessProxy/protos/access_proxy"
-	"github.com/breathbath/uAssert/simulation"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/opencord/voltha-protos/go/voltha"
 	"google.golang.org/grpc"
@@ -50,8 +50,8 @@ func (as ApDevicesServer) GetDeviceBySn(ctx context.Context, sn *access_proxy.Se
 	return nil, status.Errorf(codes.NotFound, "%s", sn.Sn)
 }
 
-func NewAccessProxyGrpcServer(accessProxyAddress, volthaAddress string) *simulation.GrpcServer {
-	return simulation.NewGrpcServer(
+func NewAccessProxyGrpcServer(accessProxyAddress, volthaAddress string) *grpc2.GrpcServer {
+	return grpc2.NewGrpcServer(
 		accessProxyAddress,
 		func(server *grpc.Server) {
 			access_proxy.RegisterDevicesServer(server, &ApDevicesServer{volthaAddress: volthaAddress})

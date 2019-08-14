@@ -1,13 +1,13 @@
 package voltha
 
 import (
-	"github.com/breathbath/uAssert/simulation"
+	"github.com/breathbath/uAssert/grpc"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/opencord/voltha-protos/go/voltha"
 )
 
-func GetStubs() simulation.SimulationCases {
-	return simulation.SimulationCases{
+func GetStubs() grpc.SimulationCases {
+	return grpc.SimulationCases{
 		{
 			Request: &empty.Empty{},
 			Response: &voltha.Devices{
@@ -27,7 +27,7 @@ func GetStubs() simulation.SimulationCases {
 					},
 				},
 			},
-			Namespace: "/voltha.VolthaService/ListDevices",
+			GrpcNamespace: "/voltha.VolthaService/ListDevices",
 		},
 	}
 }

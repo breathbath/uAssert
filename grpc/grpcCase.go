@@ -1,11 +1,21 @@
-package simulation
+package grpc
 
 import "github.com/breathbath/uAssert/encode"
+
+type SimulationCases []SimulationCase
+
+type SimulationCasesMap map[string]SimulationCase
+
+type SimulationCase struct {
+	Request       interface{}
+	Response      interface{}
+	GrpcNamespace string
+}
 
 func GetSimulationMap(scs SimulationCases) SimulationCasesMap {
 	scm := SimulationCasesMap{}
 	for _, sc := range scs {
-		scm[encode.Md5(sc.Request, sc.Namespace)] = sc
+		scm[encode.Md5(sc.Request, sc.GrpcNamespace)] = sc
 	}
 
 	return scm
@@ -20,4 +30,3 @@ func FindSimulatedCaseForRequest(request interface{}, namespace string, simCases
 
 	return foundCase, true
 }
-

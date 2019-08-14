@@ -1,4 +1,4 @@
-package simulation
+package grpc
 
 import (
 	"fmt"

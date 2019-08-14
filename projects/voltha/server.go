@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/breathbath/uAssert/simulation"
+	grpc2 "github.com/breathbath/uAssert/grpc"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/opencord/voltha-protos/go/common"
 	"github.com/opencord/voltha-protos/go/omci"
@@ -13,10 +13,10 @@ import (
 	"google.golang.org/grpc"
 )
 
-var simCasesMap simulation.SimulationCasesMap
+var simCasesMap grpc2.SimulationCasesMap
 
 func init() {
-	simCasesMap = simulation.GetSimulationMap(GetStubs())
+	simCasesMap = grpc2.GetSimulationMap(GetStubs())
 }
 
 type VolthaServerSimulator struct {
@@ -118,7 +118,7 @@ func (s *VolthaServerSimulator) UpdateLogicalDeviceFlowGroupTable(ctx context.Co
 
 // List all physical devices controlled by the Voltha cluster
 func (s *VolthaServerSimulator) ListDevices(ctx context.Context, in *empty.Empty) (*voltha.Devices, error) {
-	c, found := simulation.FindSimulatedCaseForRequest(in, "/voltha.VolthaService/ListDevices", simCasesMap)
+	c, found := grpc2.FindSimulatedCaseForRequest(in, "/voltha.VolthaService/ListDevices", simCasesMap)
 	if !found {
 		return nil, fmt.Errorf("Not found")
 	}
@@ -308,8 +308,8 @@ func (s *VolthaServerSimulator) Subscribe(context.Context, *voltha.OfAgentSubscr
 	return nil, errors.New("UnImplemented")
 }
 
-func NewVolthaServerSimulator(address string) *simulation.GrpcServer {
-	return simulation.NewGrpcServer(
+func NewVolthaServerSimulator(address string) *grpc2.GrpcServer {
+	return grpc2.NewGrpcServer(
 		address,
 		func(server *grpc.Server) {
 			voltha.RegisterVolthaServiceServer(server, &VolthaServerSimulator{})
