@@ -6,7 +6,6 @@ import (
 	errs2 "github.com/breathbath/go_utils/utils/errs"
 	"github.com/breathbath/go_utils/utils/io"
 	"github.com/breathbath/uAssert/stream"
-	io2 "io"
 	"sync"
 	"time"
 )
@@ -25,12 +24,12 @@ func NewKafkaConsumerTester(kafkaFacade Facade) *ConsumeTester {
 	}
 }
 
-func (kct *ConsumeTester) AddValidator(a *StreamValidator) {
-	_, ok := kct.validatorGroups[a.Address]
+func (kct *ConsumeTester) AddValidator(address Address, validator stream.Validator) {
+	_, ok := kct.validatorGroups[address]
 	if !ok {
-		kct.validatorGroups[a.Address] = []*StreamValidator{}
+		kct.validatorGroups[address] = []*StreamValidator{}
 	}
-	kct.validatorGroups[a.Address] = append(kct.validatorGroups[a.Address], a)
+	kct.validatorGroups[address] = append(kct.validatorGroups[address], NewStreamValidator(address, validator))
 }
 
 func (kct *ConsumeTester) startConsumption(
@@ -115,21 +114,9 @@ func (kct *ConsumeTester) collectErrors(
 	errChans []chan error,
 	errs *errs2.ErrorContainer,
 	cancelFuncs *[]context.CancelFunc,
-	) {
+) {
 	cancelCollectErrsCtx, cancelCollectErrsFn := context.WithCancel(context.Background())
-	go func() {
-		fannedInErrsStream := stream.MergeErrorStreams(errChans...)
-		for {
-			select {
-			case err := <-fannedInErrsStream:
-				if err != io2.EOF && err != context.Canceled {
-					errs.AddError(err)
-				}
-			case <-cancelCollectErrsCtx.Done():
-				return
-			}
-		}
-	}()
+	stream.CollectErrors(errs, cancelCollectErrsCtx, errChans...)
 	*cancelFuncs = append(*cancelFuncs, cancelCollectErrsFn)
 }
 

@@ -4,10 +4,10 @@ import "github.com/breathbath/uAssert/stream"
 
 type StreamValidator struct {
 	Address   Address
-	Validator stream.StreamValidator
+	Validator stream.Validator
 }
 
-func NewStreamValidator(address Address, validator stream.StreamValidator) *StreamValidator {
+func NewStreamValidator(address Address, validator stream.Validator) *StreamValidator {
 	return &StreamValidator{
 		Address:   address,
 		Validator: validator,

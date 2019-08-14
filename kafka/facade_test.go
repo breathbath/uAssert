@@ -54,11 +54,44 @@ func TestFacade(t *testing.T) {
 }
 
 func testConsumption(t *testing.T) {
+	opts := ProducerOptions{
+		addr:             Address{Topic: TOPIC_TO_TEST},
+		writeDeadLineSec: 1,
+	}
+
+	publishingSequence :=  []struct{
+		delay time.Duration
+		payload string
+	}{
+		{
+			delay: time.Millisecond * 20,
+			payload: "consumption lala",
+		},
+		{
+			delay: time.Millisecond * 40,
+			payload: "2 consumption",
+		},
+	}
+	go func(){
+		for _, seq := range publishingSequence {
+			go func() {
+				time.Sleep(seq.delay)
+
+				err := kafkaFacade.Publish(seq.payload, opts, context.Background())
+				if err != nil {
+					io.OutputError(err, "", "")
+				}
+			}()
+		}
+	}()
+
 	consumerTester := NewKafkaConsumerTester(kafkaFacade)
 
-	exachtMatch := stream.NewExactMatchAssertion("some payload")
-	kafkaExactMatch := NewStreamValidator(Address{Topic: TOPIC_TO_TEST}, exachtMatch)
-	consumerTester.AddValidator(kafkaExactMatch)
+	exachtMatch := stream.NewExactMatchAssertion("consumption lala",)
+	consumerTester.AddValidator(Address{Topic: TOPIC_TO_TEST}, exachtMatch)
+
+	regexValidator := stream.NewRegexValidator(`^\d+`)
+	consumerTester.AddValidator(Address{Topic: TOPIC_TO_TEST}, regexValidator)
 
 	err := consumerTester.StartTesting(time.Second * 10)
 	assert.NoError(t, err)
