@@ -28,7 +28,7 @@ ifneq ("libprotoc 3.7.1", "$(shell protoc --version)")
 endif
 
 ensure-simlink:
-	[ -L projects/AccessProxy/protos/voltha_protos ] || (ln -sf /Users/breathbath/go/pkg/mod/github.com/opencord/voltha-protos@v0.0.0-20190711063307-f98ca1386c16/protos/voltha_protos projects/AccessProxy/protos/voltha_protos)
-	[ -L projects/AccessProxy/protos/google ] || (ln -sf /Users/breathbath/go/pkg/mod/github.com/opencord/voltha-protos@v0.0.0-20190711063307-f98ca1386c16/protos/google projects/AccessProxy/protos/google)
+	[ -L projects/AccessProxy/protos/voltha_protos ] || (ln -sf $GOPATH/go/pkg/mod/github.com/opencord/voltha-protos@v0.0.0-20190711063307-f98ca1386c16/protos/voltha_protos projects/AccessProxy/protos/voltha_protos)
+	[ -L projects/AccessProxy/protos/google ] || (ln -sf $GOPATH/pkg/mod/github.com/opencord/voltha-protos@v0.0.0-20190711063307-f98ca1386c16/protos/google projects/AccessProxy/protos/google)
 
 build: protoc_check ensure-simlink go/ap.pb
