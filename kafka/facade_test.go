@@ -53,48 +53,50 @@ func TestFacade(t *testing.T) {
 	t.Run("testConsumption", testConsumption)
 }
 
+func startErrorsListener(ctx context.Context, errsCont *errs.ErrorContainer) chan error {
+	errsChan := make(chan error)
+	stream.CollectErrors(errsCont, ctx, errsChan)
+
+	return errsChan
+}
+
 func testConsumption(t *testing.T) {
+	errsCont := errs.NewErrorContainer()
+	cancelCollectErrsCtx, cancelCollectErrsFn := context.WithCancel(context.Background())
+	errsChan := startErrorsListener(cancelCollectErrsCtx, errsCont)
+	defer cancelCollectErrsFn()
+
 	opts := ProducerOptions{
 		addr:             Address{Topic: TOPIC_TO_TEST},
 		writeDeadLineSec: 1,
 	}
 
-	publishingSequence :=  []struct{
-		delay time.Duration
-		payload string
-	}{
-		{
-			delay: time.Millisecond * 20,
-			payload: "consumption lala",
+	publisherTester := NewPublishingTester(kafkaFacade)
+	publisherTester.PublishPayloadsAsync(
+		opts,
+		[]PublishingPayload{
+			{
+				PublishingDelay: time.Duration(0),
+				Body:            "consumption lala",
+			},
+			{
+				PublishingDelay: time.Duration(20),
+				Body:            "2 consumption",
+			},
 		},
-		{
-			delay: time.Millisecond * 40,
-			payload: "2 consumption",
-		},
-	}
-	go func(){
-		for _, seq := range publishingSequence {
-			go func() {
-				time.Sleep(seq.delay)
+		errsChan,
+	)
 
-				err := kafkaFacade.Publish(seq.payload, opts, context.Background())
-				if err != nil {
-					io.OutputError(err, "", "")
-				}
-			}()
-		}
-	}()
+	consumerTester := NewKafkaConsumeTester(kafkaFacade)
 
-	consumerTester := NewKafkaConsumerTester(kafkaFacade)
-
-	exachtMatch := stream.NewExactMatchAssertion("consumption lala",)
-	consumerTester.AddValidator(Address{Topic: TOPIC_TO_TEST}, exachtMatch)
+	exactMatch := stream.NewExactMatchAssertion("consumption lala", )
+	consumerTester.AddValidator(Address{Topic: TOPIC_TO_TEST}, exactMatch)
 
 	regexValidator := stream.NewRegexValidator(`^\d+`)
 	consumerTester.AddValidator(Address{Topic: TOPIC_TO_TEST}, regexValidator)
 
-	err := consumerTester.StartTesting(time.Second * 10)
-	assert.NoError(t, err)
+	consumerTester.StartTesting(time.Second*10, errsChan)
+	assert.NoError(t, errsCont.Result(" "))
 }
 
 func testProducing(t *testing.T) {

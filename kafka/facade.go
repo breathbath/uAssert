@@ -37,7 +37,7 @@ func (kf Facade) CleanTopics(topics ...string) error {
 	return conn.DeleteTopics(topics...)
 }
 
-func (kc Facade) Read(opts ConsumerOptions, ctx context.Context) (outs chan string, errs chan error) {
+func (kc Facade) Read(opts ConsumerOptions, ctx context.Context, errs chan error) (outs chan string) {
 	errs = make(chan error, 1000)
 	outs = make(chan string, 1000)
 
@@ -81,6 +81,7 @@ func (kc Facade) Read(opts ConsumerOptions, ctx context.Context) (outs chan stri
 				return
 			}
 			outs <- string(msg.Value)
+			fmt.Println("Got message: " + string(msg.Value))
 		}
 	}()
 

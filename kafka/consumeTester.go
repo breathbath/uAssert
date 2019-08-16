@@ -15,9 +15,9 @@ type ConsumeTester struct {
 	validatorGroups map[Address][]*StreamValidator
 }
 
-const Consumers_Per_Address_Count = 5
+const Consumers_Per_Address_Count = 1
 
-func NewKafkaConsumerTester(kafkaFacade Facade) *ConsumeTester {
+func NewKafkaConsumeTester(kafkaFacade Facade) *ConsumeTester {
 	return &ConsumeTester{
 		kafkaFacade:     kafkaFacade,
 		validatorGroups: map[Address][]*StreamValidator{},
@@ -35,17 +35,17 @@ func (kct *ConsumeTester) AddValidator(address Address, validator stream.Validat
 func (kct *ConsumeTester) startConsumption(
 	kafkaAddr Address,
 	cancelFuncs *[]context.CancelFunc,
-	errChans *[]chan error,
+	errChan chan error,
 	msgsStreams *[]<-chan string,
 ) {
 	for i := 0; i < Consumers_Per_Address_Count; i++ {
 		cancelConsumptionCtx, cancelConsumptionFn := context.WithCancel(context.Background())
-		msgChan, errChan := kct.kafkaFacade.Read(
+		msgChan := kct.kafkaFacade.Read(
 			ConsumerOptions{kafkaAddr, 5},
 			cancelConsumptionCtx,
+			errChan,
 		)
 		*cancelFuncs = append(*cancelFuncs, cancelConsumptionFn)
-		*errChans = append(*errChans, errChan)
 		*msgsStreams = append(*msgsStreams, msgChan)
 	}
 }
@@ -54,10 +54,9 @@ func (kct *ConsumeTester) startValidation(
 	msgsStreams []<-chan string,
 	validationGroup []*StreamValidator,
 	cancelFuncs *[]context.CancelFunc,
-	errChans *[]chan error,
+	errChan chan error,
 ) {
 	cancelValdationCtx, cancelValidationFn := context.WithCancel(context.Background())
-	msgValidateErrChan := make(chan error)
 	go func() {
 		fannedInMsgStream := stream.MergeMessageStreams(msgsStreams...)
 		for {
@@ -66,7 +65,7 @@ func (kct *ConsumeTester) startValidation(
 				for _, validator := range validationGroup {
 					err := validator.Validate(msg)
 					if err != nil {
-						msgValidateErrChan <- err
+						errChan <- err
 					}
 				}
 			case <-cancelValdationCtx.Done():
@@ -76,7 +75,6 @@ func (kct *ConsumeTester) startValidation(
 
 	}()
 	*cancelFuncs = append(*cancelFuncs, cancelValidationFn)
-	*errChans = append(*errChans, msgValidateErrChan)
 }
 
 func (kct *ConsumeTester) startFinishedValidatorsTracker(
@@ -120,25 +118,20 @@ func (kct *ConsumeTester) collectErrors(
 	*cancelFuncs = append(*cancelFuncs, cancelCollectErrsFn)
 }
 
-func (kct *ConsumeTester) StartTesting(timeout time.Duration) error {
-	errs := errs2.NewErrorContainer()
-
+func (kct *ConsumeTester) StartTesting(timeout time.Duration, errs chan error) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(kct.validatorGroups))
 
 	cancelFuncs := []context.CancelFunc{}
-	errChans := make([]chan error, 0)
 
 	for kafkaAddr, validationGroup := range kct.validatorGroups {
 		msgsStreams := make([]<-chan string, Consumers_Per_Address_Count)
 
-		kct.startConsumption(kafkaAddr, &cancelFuncs, &errChans, &msgsStreams)
+		kct.startConsumption(kafkaAddr, &cancelFuncs, errs, &msgsStreams)
 
-		kct.startValidation(msgsStreams, validationGroup, &cancelFuncs, &errChans)
+		kct.startValidation(msgsStreams, validationGroup, &cancelFuncs, errs)
 
 		kct.startFinishedValidatorsTracker(validationGroup, &wg, &cancelFuncs)
-
-		kct.collectErrors(errChans, errs, &cancelFuncs)
 	}
 
 	wgChan := make(chan struct{})
@@ -151,13 +144,11 @@ func (kct *ConsumeTester) StartTesting(timeout time.Duration) error {
 	case <-wgChan:
 		io.OutputInfo("", "All requirements are satisfied")
 	case <-time.After(timeout):
-		errs.AddError(fmt.Errorf("Timeout after %v", timeout))
+		errs <- fmt.Errorf("Timeout after %v", timeout)
 		io.OutputInfo("", "Testing process timeout")
 	}
 
 	for _, cancelFn := range cancelFuncs {
 		cancelFn()
 	}
-
-	return errs.Result(" ")
 }
