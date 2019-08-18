@@ -1,26 +1,38 @@
 language: go
 
+services:
+  - docker
+
 go:
   - 1.12.x
   - tip
 
 env:
   - GO111MODULE=on
-  - ZOOKEEPER_PEERS=localhost:2181
-  - KAFKA_PEERS=localhost:9092
+
 before_install:
+  - sudo ip address add 192.168.0.50/24 dev eth0
   - go mod download
-  - wget http://www.us.apache.org/dist/kafka/0.8.2.1/kafka_2.10-0.8.2.1.tgz -O kafka.tgz
-  - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-  - nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties &"
-  - nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
-  - sleep 5
+
+install:
+  - docker --version
+  - docker pull wurstmeister/zookeeper
+  - docker pull wurstmeister/kafka
+
+before_script:
+  - docker run -d --name kafka --rm -p 9092:9092 -e KAFKA_ADVERTISED_HOST_NAME="192.168.0.50" -e KAFKA_ZOOKEEPER_CONNECT="192.168.0.50:2181" -v /var/run/docker.sock:/var/run/docker.sock wurstmeister/kafka
+  - docker run -d --name zookeeper --rm -p 2181:2181 wurstmeister/zookeeper
+
+after_script:
+  - docker stop zookeeper
+  - docker stop kafka
 
 # Only clone the most recent commit.
 git:
   depth: 1
 
 script:
+ - curl -sSLi http://192.168.0.50:9000  | grep '200 OK'
  - go vet ./...
  - go test -race -v ./...
 
