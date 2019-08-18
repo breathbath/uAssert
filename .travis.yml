@@ -8,8 +8,7 @@ go:
   - tip
 
 env:
-  - GO111MODULE=on
-  - KAFKA_CONN_STR=192.168.0.50:9092
+  - GO111MODULE=on KAFKA_CONN_STR=192.168.0.50:9092
 
 before_install:
   - sudo ip address add 192.168.0.50/24 dev eth0
