@@ -1,4 +1,4 @@
-package stream
+package validate
 
 import (
 	"fmt"
@@ -28,6 +28,10 @@ func (ema *ExactMatchValidator) Validate(payload string) (err error) {
 
 func (ema *ExactMatchValidator) GetValidationErrors() []error {
 	return ema.validationErrors
+}
+
+func (ema *ExactMatchValidator) GetName() string {
+	return fmt.Sprintf("Expected exact match '%s'", ema.pattern)
 }
 
 func (ema *ExactMatchValidator) IsFinished() bool {

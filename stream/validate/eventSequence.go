@@ -1,7 +1,8 @@
-package stream
+package validate
 
 import (
 	"fmt"
+	"strings"
 )
 
 type EventSequenceValidator struct {
@@ -15,8 +16,9 @@ func NewEventSequenceValidator(eventsValidators [] Validator) (*EventSequenceVal
 	if len(eventsValidators) == 0 {
 		err = fmt.Errorf("No sequence expectations provided")
 	}
+
 	return &EventSequenceValidator{
-		eventsValidators: [] Validator{},
+		eventsValidators: eventsValidators,
 		validationErrors: []error{
 			fmt.Errorf("Nothing matched to the defined sequence"),
 		},
@@ -41,16 +43,26 @@ func (esv *EventSequenceValidator) Validate(payload string) (err error) {
 	return nil
 }
 
-func (esv *EventSequenceValidator) GetValidationErrors() []error {
-	errs := []error{}
-	for _, esv := range esv.eventsValidators {
-		errs = append(errs, esv.GetValidationErrors()...)
+func (esv *EventSequenceValidator) GetName() string {
+	names := []string{}
+	for _, v := range esv.eventsValidators {
+		names = append(names, v.GetName())
 	}
-	return errs
+
+	return fmt.Sprintf("Expecting event sequence: %s", strings.Join(names, ", "))
+}
+
+func (esv *EventSequenceValidator) GetValidationErrors() []error {
+	return esv.validationErrors
 }
 
 func (esv *EventSequenceValidator) IsFinished() bool {
-	return esv.nextValidator >= len(esv.eventsValidators)
+	sequenceIsFound := esv.nextValidator >= len(esv.eventsValidators)
+	if sequenceIsFound {
+		esv.validationErrors = []error{}
+	}
+
+	return sequenceIsFound
 }
 
 

@@ -1,4 +1,4 @@
-package stream
+package validate
 
 import (
 "fmt"
@@ -25,6 +25,10 @@ func (rv *RegexValidator) Validate(payload string) (err error) {
 	}
 
 	return nil
+}
+
+func (rv *RegexValidator) GetName() string {
+	return fmt.Sprintf("Expected regex '%s'", rv.regex)
 }
 
 func (rv *RegexValidator) GetValidationErrors() []error {

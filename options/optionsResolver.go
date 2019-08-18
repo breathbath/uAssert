@@ -37,3 +37,20 @@ func ResolveValueStr(key string, o Options, defaultValue string, isRequired bool
 
 	return valToReturn, nil
 }
+
+func ResolveValueStrSlice(key string, o Options, defaultValue []string, isRequired bool) ([]string, error) {
+	val, keyOk := o[key]
+	if !keyOk {
+		if isRequired {
+			return defaultValue, fmt.Errorf("Option '%s' is required", key)
+		}
+		return defaultValue, nil
+	}
+
+	valSlice, typeOk := val.([]string)
+	if !typeOk {
+		return defaultValue, fmt.Errorf("Invalid value type %v for key %s, expected type is []string", val, key)
+	}
+
+	return valSlice, nil
+}

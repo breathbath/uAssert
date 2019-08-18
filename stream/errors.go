@@ -3,25 +3,29 @@ package stream
 import (
 	"context"
 	"github.com/breathbath/go_utils/utils/errs"
+	io2 "github.com/breathbath/go_utils/utils/io"
 	"io"
 )
 
 func CollectErrors(
-	errs *errs.ErrorContainer,
+	errCont *errs.ErrorContainer,
 	ctx context.Context,
-	errChans ...chan error,
+	errChan chan error,
+	withLog bool,
 ) {
-	go func() {
-		fannedInErrsStream := MergeErrorStreams(errChans...)
+	go func(errCont *errs.ErrorContainer) {
 		for {
 			select {
-			case err := <-fannedInErrsStream:
+			case err := <-errChan:
+				if withLog {
+					io2.OutputInfo("", "Received err %v", err)
+				}
 				if err != io.EOF && err != context.Canceled {
-					errs.AddError(err)
+					errCont.AddError(err)
 				}
 			case <-ctx.Done():
 				return
 			}
 		}
-	}()
+	}(errCont)
 }
