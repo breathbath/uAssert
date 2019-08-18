@@ -110,7 +110,7 @@ func (kf *StreamFacade) Read(opts options.Options, ctx context.Context, errChan 
 	return
 }
 
-func (kf StreamFacade) PublishMany(opts options.Options, payloads []string) error {
+func (kf *StreamFacade) PublishMany(opts options.Options, payloads []string) error {
 	prodOptions, err := ResolveProducerOptions(opts)
 	if err != nil {
 		return err
@@ -186,7 +186,7 @@ func (kf *StreamFacade) Close(opts options.Options) error {
 	return errCont.Result(" ")
 }
 
-func (kf StreamFacade) createTopic(topic string, numPartitions int, replFactor int, timeout time.Duration) error {
+func (kf *StreamFacade) createTopic(topic string, numPartitions int, replFactor int, timeout time.Duration) error {
 	topicDetail := &sarama.TopicDetail{}
 	topicDetail.NumPartitions = int32(numPartitions)
 	topicDetail.ReplicationFactor = int16(replFactor)

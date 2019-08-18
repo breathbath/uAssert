@@ -13,16 +13,16 @@ import (
 
 type StreamTester struct {
 	streamFacade      StreamFacade
-	expectationGroups sync.Map
-	readOptions       sync.Map
+	expectationGroups *sync.Map
+	readOptions       *sync.Map
 	wg                sync.WaitGroup
 }
 
 func NewStreamTester(facade StreamFacade) *StreamTester {
 	return &StreamTester{
 		streamFacade:      facade,
-		expectationGroups: sync.Map{},
-		readOptions:       sync.Map{},
+		expectationGroups: &sync.Map{},
+		readOptions:       &sync.Map{},
 		wg:                sync.WaitGroup{},
 	}
 }
@@ -30,9 +30,9 @@ func NewStreamTester(facade StreamFacade) *StreamTester {
 func (kct *StreamTester) AddExpectation(id string, readOptions options.Options, exp expectation.Expectation) {
 	kct.readOptions.LoadOrStore(id, readOptions)
 
-	actual, _ := kct.expectationGroups.LoadOrStore(id, sync.Map{})
+	actual, _ := kct.expectationGroups.LoadOrStore(id, &sync.Map{})
 
-	existingExpectations := actual.(sync.Map)
+	existingExpectations := actual.(*sync.Map)
 	existingExpectations.Store(exp.GetName(), exp)
 
 	kct.expectationGroups.Store(id, existingExpectations)
@@ -75,7 +75,7 @@ func (kct *StreamTester) startValidation(
 					continue mainLoop
 				}
 
-				expectationGroup, ok := actualVal.(sync.Map)
+				expectationGroup, ok := actualVal.(*sync.Map)
 				if !ok {
 					errChan <- fmt.Errorf("Unknown type of map value '%v'", actualVal)
 					continue mainLoop
