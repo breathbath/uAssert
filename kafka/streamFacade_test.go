@@ -7,7 +7,7 @@ import (
 	"github.com/breathbath/go_utils/utils/io"
 	"github.com/breathbath/uAssert/options"
 	"github.com/breathbath/uAssert/stream"
-	"github.com/breathbath/uAssert/stream/validate"
+	"github.com/breathbath/uAssert/stream/expectation"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -19,7 +19,7 @@ var kafkaFacade *StreamFacade
 
 func setup() {
 	config := sarama.NewConfig()
-	config.Version=sarama.V0_10_2_0
+	config.Version = sarama.V0_10_2_0
 
 	connStr := env.ReadEnvOrFail("KAFKA_CONN_STR")
 
@@ -50,35 +50,48 @@ func TestFacade(t *testing.T) {
 
 func testKafkaStream(t *testing.T) {
 	opts := options.Options{
-		"topic": TOPIC_TO_TEST,
-		"partition": 0,
-		"writeDeadLineSec":1,
+		"topic":            TOPIC_TO_TEST,
+		"partition":        0,
+		"writeDeadLineSec": 1,
 	}
 
-	err := kafkaFacade.PublishMany(opts, []string{"consumption lala","2 consumption"})
+	err := kafkaFacade.PublishMany(opts, []string{"consumption lala", "2 consumption"})
 	errs.FailOnError(err)
 
 	streamTester := stream.NewStreamTester(kafkaFacade)
 
-	exactMatch := validate.NewExactMatchAssertion("consumption lala")
-	streamTester.AddValidator(TOPIC_TO_TEST, exactMatch)
-
-	regexValidator := validate.NewRegexValidator(`^\d+`)
-	streamTester.AddValidator(TOPIC_TO_TEST, regexValidator)
-
-	eventSequence, err := validate.NewEventSequenceValidator([]validate.Validator{
-		validate.NewExactMatchAssertion("consumption lala"),
-		validate.NewExactMatchAssertion("2 consumption"),
-	})
-	streamTester.AddValidator(TOPIC_TO_TEST, eventSequence)
-	errs.FailOnError(err)
-
 	readOptions := options.Options{
 		"readDeadlineSec": 1,
-		"topic": TOPIC_TO_TEST,
-		"partition": 0,
+		"topic":           TOPIC_TO_TEST,
+		"partition":       0,
 	}
 
-	errsCont := streamTester.StartTesting(readOptions, time.Second*10)
+	exactMatch, err := expectation.NewMatch(
+		"consumption lala",
+		false,
+		"Exact match 'consumption lala'",
+	)
+	errs.FailOnError(err)
+	streamTester.AddExpectation(TOPIC_TO_TEST, readOptions, exactMatch)
+
+	regexValidator, err := expectation.NewMatch(
+		`^\d+`,
+		true,
+		"Message starting with at least one number",
+	)
+	streamTester.AddExpectation(TOPIC_TO_TEST, readOptions, regexValidator)
+
+	eventSequence := expectation.NewSequence(
+		[]expectation.Expectation{
+			exactMatch,
+			regexValidator,
+		},
+		"First 'consumption lala' second a message with at least a number in the beginning",
+	)
+	streamTester.AddExpectation(TOPIC_TO_TEST, readOptions, eventSequence)
+	errs.FailOnError(err)
+
+	errsCont := streamTester.StartTesting(time.Second*10)
+	io.OutputInfo("", "Draining errs")
 	assert.NoError(t, errsCont.Result("\n"))
 }

@@ -7,15 +7,16 @@ import (
 	"github.com/breathbath/go_utils/utils/errs"
 	"github.com/breathbath/go_utils/utils/io"
 	"github.com/breathbath/uAssert/options"
+	"sync"
 	"time"
 )
 
 type StreamFacade struct {
-	connStr      string
-	clusterAdmin sarama.ClusterAdmin
-	publisher    sarama.SyncProducer
-	consumer     sarama.Consumer
-	partConsumer []sarama.PartitionConsumer
+	connStr       string
+	clusterAdmin  sarama.ClusterAdmin
+	publisher     sarama.SyncProducer
+	consumer      sarama.Consumer
+	partConsumers sync.Map
 }
 
 func NewStreamFacade(connStr string) (*StreamFacade, error) {
@@ -26,7 +27,7 @@ func NewStreamFacade(connStr string) (*StreamFacade, error) {
 
 	clusterAdmin, err := sarama.NewClusterAdmin([]string{connStr}, conf)
 
-	return &StreamFacade{clusterAdmin: clusterAdmin, connStr: connStr}, err
+	return &StreamFacade{clusterAdmin: clusterAdmin, connStr: connStr, partConsumers: sync.Map{}}, err
 }
 
 func (kf *StreamFacade) PrepareStream(opts options.Options) error {
@@ -58,7 +59,17 @@ func (kf *StreamFacade) Read(opts options.Options, ctx context.Context, errChan 
 			errChan <- err
 			return
 		}
+	}
 
+	_, hasPartitionConsumer := kf.partConsumers.Load(consumerOpts.addr)
+	if hasPartitionConsumer {
+		io.OutputWarning(
+			"",
+			"Already having a consumer for partition %d in topic %s",
+			consumerOpts.addr.Partition,
+			consumerOpts.addr.Topic,
+		)
+		return
 	}
 
 	partitionConsumer, err := kf.consumer.ConsumePartition(
@@ -67,6 +78,7 @@ func (kf *StreamFacade) Read(opts options.Options, ctx context.Context, errChan 
 		sarama.OffsetOldest,
 	)
 	if err != nil {
+		io.OutputInfo("", "Consum err")
 		errChan <- err
 		return
 	}
@@ -78,7 +90,7 @@ func (kf *StreamFacade) Read(opts options.Options, ctx context.Context, errChan 
 		consumerOpts.addr.Partition,
 	)
 
-	kf.partConsumer = append(kf.partConsumer, partitionConsumer)
+	kf.partConsumers.Store(consumerOpts.addr, partitionConsumer)
 
 	go func() {
 	ConsumerLoop:
@@ -145,14 +157,14 @@ func (kf *StreamFacade) Close(opts options.Options) error {
 		}
 	}
 
-	if len(kf.partConsumer) > 0 {
-		for _, pc := range kf.partConsumer {
-			err := pc.Close()
-			if err != nil {
-				errCont.AddError(err)
-			}
+	kf.partConsumers.Range(func(key, value interface{}) bool {
+		pc := value.(sarama.PartitionConsumer)
+		err := pc.Close()
+		if err != nil {
+			errCont.AddError(err)
 		}
-	}
+		return true
+	})
 
 	topic, err := ResolveTopicOption(opts)
 	if err == nil {
