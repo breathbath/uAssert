@@ -32,7 +32,6 @@ git:
   depth: 1
 
 script:
- - curl -sSLi http://192.168.0.50:9000  | grep '200 OK'
  - go vet ./...
  - go test -race -v ./...
 
