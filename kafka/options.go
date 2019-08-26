@@ -17,34 +17,25 @@ func (co ConnOptions) Validate() error {
 }
 
 type ProducerOptions struct {
-	addr             Address
+	topic            string
 	writeDeadLineSec int
 }
 
 func (po ProducerOptions) Validate() error {
-	err := po.addr.Validate()
-	return err
+	if po.topic == "" {
+		return fmt.Errorf("Empty topic")
+	}
+	return nil
 }
 
 type ConsumerOptions struct {
-	addr            Address
+	topic            string
 	readDeadLineSec int
 }
 
 func (co ConsumerOptions) Validate() error {
-	err := co.addr.Validate()
-	return err
-}
-
-type Address struct {
-	Topic     string
-	Partition int
-}
-
-func (ka Address) Validate() error {
-	if ka.Topic == "" {
+	if co.topic == "" {
 		return fmt.Errorf("Empty topic")
 	}
-
 	return nil
 }

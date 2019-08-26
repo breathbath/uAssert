@@ -38,7 +38,7 @@ func ResolveTopicCreateOptions(opts options.Options) (topic string, numPartition
 func ResolveConsumerOptions(opts options.Options) (co ConsumerOptions, err error)  {
 	co = ConsumerOptions{}
 
-	co.addr, err = ResolveKafkaAddressOptions(opts)
+	co.topic, err = ResolveKafkaAddressOptions(opts)
 	if err != nil {
 		return
 	}
@@ -51,7 +51,7 @@ func ResolveConsumerOptions(opts options.Options) (co ConsumerOptions, err error
 func ResolveProducerOptions(opts options.Options) (po ProducerOptions, err error)  {
 	po = ProducerOptions{}
 
-	po.addr, err = ResolveKafkaAddressOptions(opts)
+	po.topic, err = ResolveKafkaAddressOptions(opts)
 	if err != nil {
 		return
 	}
@@ -62,24 +62,10 @@ func ResolveProducerOptions(opts options.Options) (po ProducerOptions, err error
 }
 
 
-func ResolveKafkaAddressOptions(opts options.Options) (addr Address, err error) {
-	var topic string
-
+func ResolveKafkaAddressOptions(opts options.Options) (topic string, err error) {
 	topic, err = ResolveTopicOption(opts)
 	if err != nil {
 		return
-	}
-
-	var partition int
-
-	partition, err = options.ResolveValueInt("partition", opts, 0, false)
-	if err != nil {
-		return
-	}
-
-	addr = Address{
-		Topic: topic,
-		Partition: partition,
 	}
 
 	return

@@ -51,7 +51,6 @@ func TestFacade(t *testing.T) {
 func testKafkaStream(t *testing.T) {
 	opts := options.Options{
 		"topic":            TOPIC_TO_TEST,
-		"partition":        0,
 		"writeDeadLineSec": 1,
 	}
 
@@ -63,7 +62,6 @@ func testKafkaStream(t *testing.T) {
 	readOptions := options.Options{
 		"readDeadlineSec": 1,
 		"topic":           TOPIC_TO_TEST,
-		"partition":       0,
 	}
 
 	exactMatch, err := expectation.NewMatch(

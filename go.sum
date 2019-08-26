@@ -9,6 +9,8 @@ github.com/Shopify/sarama v1.23.1/go.mod h1:XLH1GYJnLVE0XCr6KdJGVJRTwY30moWNJ4sE
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/breathbath/go_utils v0.0.0-20190211130746-62379d8df36c h1:VvbBwqJPtgxo6aOdEvb42Y/co+1/slApSokQW+XsCX0=
 github.com/breathbath/go_utils v0.0.0-20190211130746-62379d8df36c/go.mod h1:13LzDp3v9P0ZnNpBO+VG7Fdrj+mPGjsMQUm6auQya2A=
+github.com/breathbath/gotainer v0.0.0-20190627124341-2aa46c5c886f h1:bb2e1GUkDp4m/+3Orde+WTSiAdesugJMr5j2ZWMgzCc=
+github.com/breathbath/gotainer v0.0.0-20190627124341-2aa46c5c886f/go.mod h1:fvGlDHa4CQaIt8AgjfEVA7f9zbpGf7Blmnb26LkvxoE=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/confluentinc/confluent-kafka-go v1.1.0 h1:HIW7Nkm8IeKRotC34mGY06DwQMf9Mp9PZMyqDxid2wI=
 github.com/confluentinc/confluent-kafka-go v1.1.0/go.mod h1:u2zNLny2xq+5rWeTQjFHbDzzNuba4P1vo31r9r4uAdg=

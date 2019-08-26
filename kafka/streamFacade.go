@@ -61,51 +61,35 @@ func (kf *StreamFacade) Read(opts options.Options, ctx context.Context, errChan 
 		}
 	}
 
-	_, hasPartitionConsumer := kf.partConsumers.Load(consumerOpts.addr)
-	if hasPartitionConsumer {
-		io.OutputWarning(
-			"",
-			"Already having a consumer for partition %d in topic %s",
-			consumerOpts.addr.Partition,
-			consumerOpts.addr.Topic,
-		)
-		return
-	}
-
-	partitionConsumer, err := kf.consumer.ConsumePartition(
-		consumerOpts.addr.Topic,
-		int32(consumerOpts.addr.Partition),
-		sarama.OffsetOldest,
-	)
+	partitionList, err := kf.consumer.Partitions(consumerOpts.topic) //get all partitions on the given topic
 	if err != nil {
-		io.OutputInfo("", "Consum err")
 		errChan <- err
 		return
 	}
 
-	io.OutputInfo(
-		"",
-		"Starting consuming, topic %s, partition %d",
-		consumerOpts.addr.Topic,
-		consumerOpts.addr.Partition,
-	)
-
-	kf.partConsumers.Store(consumerOpts.addr, partitionConsumer)
-
-	go func() {
-	ConsumerLoop:
-		for {
-			select {
-			case msg := <-partitionConsumer.Messages():
-				io.OutputInfo("", "Got message: '%s'", string(msg.Value))
-				outs <- string(msg.Value)
-			case cer := <-partitionConsumer.Errors():
-				errChan <- cer
-			case <-ctx.Done():
-				break ConsumerLoop
-			}
+	initialOffset := sarama.OffsetOldest
+	for _, partition := range partitionList {
+		pc, err := kf.consumer.ConsumePartition(consumerOpts.topic, partition, initialOffset)
+		if err != nil {
+			errChan <- err
+			return
 		}
-	}()
+
+		go func(pc sarama.PartitionConsumer) {
+		ConsumerLoop:
+			for {
+				select {
+				case msg := <-pc.Messages():
+					io.OutputInfo("", "Got message: '%s'", string(msg.Value))
+					outs <- string(msg.Value)
+				case cer := <-pc.Errors():
+					errChan <- cer
+				case <-ctx.Done():
+					break ConsumerLoop
+				}
+			}
+		}(pc)
+	}
 
 	return
 }
@@ -132,9 +116,8 @@ func (kf *StreamFacade) PublishMany(opts options.Options, payloads []string) err
 
 	for _, payload := range payloads {
 		msg := &sarama.ProducerMessage{
-			Topic:     prodOptions.addr.Topic,
+			Topic:     prodOptions.topic,
 			Value:     sarama.StringEncoder(payload),
-			Partition: int32(prodOptions.addr.Partition),
 		}
 		part, off, err := kf.publisher.SendMessage(msg)
 		if err != nil {
